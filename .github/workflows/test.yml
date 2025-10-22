@@ -13,7 +13,7 @@ jobs:
           --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
           --health-interval 10s
           --health-timeout 5s
-          --health- 5
+          --health-retries 5
       rabbitmq:
         image: rabbitmq:3-management
         ports:
