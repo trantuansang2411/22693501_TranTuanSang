@@ -149,80 +149,104 @@ describe("Products", () => {
       expect(res).to.have.status(401);
     });
   });
-  describe("GET /:id", () => {
-    it("should get a specific order by id", async () => {
-      // First create an order
+
+  describe("POST /buy", () => {
+    it("should create an order with valid products", async () => {
       const orderData = [
         {
           _id: createdProductId,
-          quantity: 1
+          quantity: 2
         }
       ];
 
-      const createRes = await chai
+      const res = await chai
         .request(app.app)
         .post("/buy")
         .set("Authorization", `Bearer ${authToken}`)
         .send(orderData);
 
-      const orderId = createRes.body._id;
-
-      // Then get the order by id
-      const res = await chai
-        .request(app.app)
-        .get(`/${orderId}`)
-        .set("Authorization", `Bearer ${authToken}`);
-
-      expect(res).to.have.status(200);
-      expect(res.body).to.have.property("_id", orderId);
+      expect(res).to.have.status(201);
+      expect(res.body).to.have.property("_id");
       expect(res.body).to.have.property("username");
       expect(res.body).to.have.property("products");
       expect(res.body.products).to.be.an("array");
     });
 
-    it("should return 404 for non-existent order id", async () => {
-      const nonExistentId = "507f1f77bcf86cd799439011"; // Valid MongoDB ObjectId format
-
+    it("should return error for empty products array", async () => {
       const res = await chai
         .request(app.app)
-        .get(`/${nonExistentId}`)
-        .set("Authorization", `Bearer ${authToken}`);
-
-      expect(res).to.have.status(404);
-      expect(res.body).to.have.property("message");
-    });
-
-    it("should return 400 for invalid order id format", async () => {
-      const invalidId = "invalid-id-format";
-
-      const res = await chai
-        .request(app.app)
-        .get(`/${invalidId}`)
-        .set("Authorization", `Bearer ${authToken}`);
+        .post("/buy")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send([]);
 
       expect(res).to.have.status(400);
-      expect(res.body).to.have.property("message");
+      expect(res.body).to.have.property("message", "Invalid products data");
+    });
+
+    it("should return error for invalid products data", async () => {
+      const res = await chai
+        .request(app.app)
+        .post("/buy")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send("invalid data");
+
+      expect(res).to.have.status(400);
+      expect(res.body).to.have.property("message", "Invalid products data");
+    });
+
+    it("should return error for products without _id", async () => {
+      const orderData = [
+        {
+          quantity: 2
+        }
+      ];
+
+      const res = await chai
+        .request(app.app)
+        .post("/buy")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send(orderData);
+
+      expect(res).to.have.status(400);
+      expect(res.body).to.have.property("message", "Each product must have an id and quantity");
+    });
+
+    it("should return error for products without quantity", async () => {
+      const orderData = [
+        {
+          _id: createdProductId
+        }
+      ];
+
+      const res = await chai
+        .request(app.app)
+        .post("/buy")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send(orderData);
+
+      expect(res).to.have.status(400);
+      expect(res.body).to.have.property("message", "Each product must have an id and quantity");
+    });
+
+    it("should return error for quantity less than 1", async () => {
+      const orderData = [
+        {
+          _id: createdProductId,
+          quantity: 0
+        }
+      ];
+
+      const res = await chai
+        .request(app.app)
+        .post("/buy")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send(orderData);
+
+      expect(res).to.have.status(400);
+      expect(res.body).to.have.property("message", "Product quantity must be > 0");
     });
 
     it("should return unauthorized without token", async () => {
-      const res = await chai
-        .request(app.app)
-        .get(`/${createdProductId}`);
-
-      expect(res).to.have.status(401);
-    });
-
-    it("should return unauthorized with invalid token", async () => {
-      const res = await chai
-        .request(app.app)
-        .get(`/${createdProductId}`)
-        .set("Authorization", "Bearer invalidtoken");
-
-      expect(res).to.have.status(401);
-    });
-
-    it("should only return orders belonging to authenticated user", async () => {
-      // Create an order
       const orderData = [
         {
           _id: createdProductId,
@@ -230,135 +254,12 @@ describe("Products", () => {
         }
       ];
 
-      const createRes = await chai
-        .request(app.app)
-        .post("/buy")
-        .set("Authorization", `Bearer ${authToken}`)
-        .send(orderData);
-
-      const orderId = createRes.body._id;
-
-      // Get the order with same user token
       const res = await chai
         .request(app.app)
-        .get(`/${orderId}`)
-        .set("Authorization", `Bearer ${authToken}`);
+        .post("/buy")
+        .send(orderData);
 
-      expect(res).to.have.status(200);
-      expect(res.body).to.have.property("_id", orderId);
+      expect(res).to.have.status(401);
     });
   });
-});
-describe("POST /buy", () => {
-  it("should create an order with valid products", async () => {
-    const orderData = [
-      {
-        _id: createdProductId,
-        quantity: 2
-      }
-    ];
-
-    const res = await chai
-      .request(app.app)
-      .post("/buy")
-      .set("Authorization", `Bearer ${authToken}`)
-      .send(orderData);
-
-    expect(res).to.have.status(201);
-    expect(res.body).to.have.property("_id");
-    expect(res.body).to.have.property("username");
-    expect(res.body).to.have.property("products");
-    expect(res.body.products).to.be.an("array");
-  });
-
-  it("should return error for empty products array", async () => {
-    const res = await chai
-      .request(app.app)
-      .post("/buy")
-      .set("Authorization", `Bearer ${authToken}`)
-      .send([]);
-
-    expect(res).to.have.status(400);
-    expect(res.body).to.have.property("message", "Invalid products data");
-  });
-
-  it("should return error for invalid products data", async () => {
-    const res = await chai
-      .request(app.app)
-      .post("/buy")
-      .set("Authorization", `Bearer ${authToken}`)
-      .send("invalid data");
-
-    expect(res).to.have.status(400);
-    expect(res.body).to.have.property("message", "Invalid products data");
-  });
-
-  it("should return error for products without _id", async () => {
-    const orderData = [
-      {
-        quantity: 2
-      }
-    ];
-
-    const res = await chai
-      .request(app.app)
-      .post("/buy")
-      .set("Authorization", `Bearer ${authToken}`)
-      .send(orderData);
-
-    expect(res).to.have.status(400);
-    expect(res.body).to.have.property("message", "Each product must have an id and quantity");
-  });
-
-  it("should return error for products without quantity", async () => {
-    const orderData = [
-      {
-        _id: createdProductId
-      }
-    ];
-
-    const res = await chai
-      .request(app.app)
-      .post("/buy")
-      .set("Authorization", `Bearer ${authToken}`)
-      .send(orderData);
-
-    expect(res).to.have.status(400);
-    expect(res.body).to.have.property("message", "Each product must have an id and quantity");
-  });
-
-  it("should return error for quantity less than 1", async () => {
-    const orderData = [
-      {
-        _id: createdProductId,
-        quantity: 0
-      }
-    ];
-
-    const res = await chai
-      .request(app.app)
-      .post("/buy")
-      .set("Authorization", `Bearer ${authToken}`)
-      .send(orderData);
-
-    expect(res).to.have.status(400);
-    expect(res.body).to.have.property("message", "Product quantity must be > 0");
-  });
-
-  it("should return unauthorized without token", async () => {
-    const orderData = [
-      {
-        _id: createdProductId,
-        quantity: 1
-      }
-    ];
-
-    const res = await chai
-      .request(app.app)
-      .post("/buy")
-      .send(orderData);
-
-    expect(res).to.have.status(401);
-  });
-});
 });

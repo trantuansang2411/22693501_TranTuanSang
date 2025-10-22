@@ -13,7 +13,7 @@ jobs:
           --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 5
+          --health- 5
       rabbitmq:
         image: rabbitmq:3-management
         ports:
@@ -47,9 +47,11 @@ jobs:
       run: |
         cd auth
         npm ci
-        cd ../product
+        cd ..
+        cd productretries
         npm ci
         cd ..
+        npm ci
     - name: Run tests for auth
       run : |
         cd auth
